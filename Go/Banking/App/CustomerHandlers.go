@@ -18,9 +18,9 @@ func (ch *CustomerHandler) getCustomers(w http.ResponseWriter, r *http.Request) 
 	customers, err := ch.service.GetAllCustomers(status)
 
 	if err != nil {
-		writeResponde(w, err.ID, err.AsMessage())
+		writeResponse(w, err.ID, err.AsMessage())
 	} else {
-		writeResponde(w, http.StatusOK, customers)
+		writeResponse(w, http.StatusOK, customers)
 	}
 
 }
@@ -31,13 +31,13 @@ func (ch *CustomerHandler) getCustomerByID(w http.ResponseWriter, r *http.Reques
 
 	customer, err := ch.service.GetCustomerByID(id)
 	if err != nil {
-		writeResponde(w, err.ID, err.AsMessage())
+		writeResponse(w, err.ID, err.AsMessage())
 	} else {
-		writeResponde(w, http.StatusOK, customer)
+		writeResponse(w, http.StatusOK, customer)
 	}
 }
 
-func writeResponde(w http.ResponseWriter, code int, data interface{}) {
+func writeResponse(w http.ResponseWriter, code int, data interface{}) {
 	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(code)
 	if err := json.NewEncoder(w).Encode(data); err != nil {

@@ -3,44 +3,36 @@ package Domain
 import (
 	"banking/errs"
 	"database/sql"
+	"fmt"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/jmoiron/sqlx"
 	"log"
+	"os"
 	"time"
 )
 
 type CustomerRepositoryDB struct {
-	client *sql.DB
+	client *sqlx.DB
 }
 
 func (d CustomerRepositoryDB) FindAll(status string) ([]Customer, *errs.AppError) {
 
 	var (
-		rows *sql.Rows
-		err  error
+		err error
 	)
 
+	customers := make([]Customer, 0)
 	if status == "" {
 		findAllSQL := "select customer_id, name, city, zipcode, date_of_birth, status from customers"
-		rows, err = d.client.Query(findAllSQL)
+		err = d.client.Select(&customers, findAllSQL)
 	} else {
 		findAllSQL := "select customer_id, name, city, zipcode, date_of_birth, status from customers where status = ?"
-		rows, err = d.client.Query(findAllSQL, status)
+		err = d.client.Select(&customers, findAllSQL, status)
 	}
 
 	if err != nil {
-		log.Println("Error querying the customer table" + err.Error())
+		log.Println("Error querying the customer table: " + err.Error())
 		return nil, errs.NewNUnexpectedError("Unexpected Database error")
-	}
-
-	customers := make([]Customer, 0)
-	for rows.Next() {
-		var c Customer
-		err := rows.Scan(&c.ID, &c.Name, &c.City, &c.Zipcode, &c.DateOfBirth, &c.status)
-		if err != nil {
-			log.Println("Error scanning customers" + err.Error())
-			return nil, errs.NewNUnexpectedError("Unexpected Database error")
-		}
-		customers = append(customers, c)
 	}
 
 	return customers, nil
@@ -50,14 +42,13 @@ func (d CustomerRepositoryDB) ByID(id string) (*Customer, *errs.AppError) {
 
 	findClientSQL := "select customer_id, name, city, zipcode, date_of_birth, status from customers where customer_id = ?"
 
-	row := d.client.QueryRow(findClientSQL, id)
 	var c Customer
-	err := row.Scan(&c.ID, &c.Name, &c.City, &c.Zipcode, &c.DateOfBirth, &c.status)
+	err := d.client.Get(&c, findClientSQL, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, errs.NewNotFoundError("Customer not found")
 		} else {
-			log.Println("Error querying the customer table" + err.Error())
+			log.Println("Error querying the customer table: " + err.Error())
 			return nil, errs.NewNUnexpectedError("Unexpected Database error")
 		}
 	}
@@ -66,7 +57,15 @@ func (d CustomerRepositoryDB) ByID(id string) (*Customer, *errs.AppError) {
 
 func NewCustomerRepositoryDB() CustomerRepositoryDB {
 
-	Client, err := sql.Open("mysql", "root:linuxeamor@tcp(localhost:3306)/banking")
+	dbUser := os.Getenv("DB_USER")
+	dbPasswd := os.Getenv("DB_PASSWD")
+	dbAddr := os.Getenv("DB_ADDR")
+	dbPort := os.Getenv("DB_PORT")
+	dbName := os.Getenv("DB_NAME")
+
+	dataSource := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbUser, dbPasswd, dbAddr, dbPort, dbName)
+
+	Client, err := sqlx.Open("mysql", dataSource)
 	if err != nil {
 		panic(err)
 	}
