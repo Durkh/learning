@@ -3,12 +3,9 @@ package Domain
 import (
 	"banking/errs"
 	"database/sql"
-	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	"log"
-	"os"
-	"time"
 )
 
 type CustomerRepositoryDB struct {
@@ -32,7 +29,7 @@ func (d CustomerRepositoryDB) FindAll(status string) ([]Customer, *errs.AppError
 
 	if err != nil {
 		log.Println("Error querying the customer table: " + err.Error())
-		return nil, errs.NewNUnexpectedError("Unexpected Database error")
+		return nil, errs.NewUnexpectedError("Unexpected Database error")
 	}
 
 	return customers, nil
@@ -49,29 +46,13 @@ func (d CustomerRepositoryDB) ByID(id string) (*Customer, *errs.AppError) {
 			return nil, errs.NewNotFoundError("Customer not found")
 		} else {
 			log.Println("Error querying the customer table: " + err.Error())
-			return nil, errs.NewNUnexpectedError("Unexpected Database error")
+			return nil, errs.NewUnexpectedError("Unexpected Database error")
 		}
 	}
 	return &c, nil
 }
 
-func NewCustomerRepositoryDB() CustomerRepositoryDB {
+func NewCustomerRepositoryDB(dbClient *sqlx.DB) CustomerRepositoryDB {
 
-	dbUser := os.Getenv("DB_USER")
-	dbPasswd := os.Getenv("DB_PASSWD")
-	dbAddr := os.Getenv("DB_ADDR")
-	dbPort := os.Getenv("DB_PORT")
-	dbName := os.Getenv("DB_NAME")
-
-	dataSource := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbUser, dbPasswd, dbAddr, dbPort, dbName)
-
-	Client, err := sqlx.Open("mysql", dataSource)
-	if err != nil {
-		panic(err)
-	}
-	Client.SetConnMaxLifetime(time.Minute * 3)
-	Client.SetMaxOpenConns(10)
-	Client.SetMaxIdleConns(10)
-
-	return CustomerRepositoryDB{Client}
+	return CustomerRepositoryDB{dbClient}
 }
