@@ -6,6 +6,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"log"
 	"strconv"
+	"strings"
 )
 
 type TransactionRepositoryDB struct {
@@ -13,10 +14,22 @@ type TransactionRepositoryDB struct {
 }
 
 func (t TransactionRepositoryDB) Record(transaction Transaction) (*Transaction, *errs.AppError) {
+
+	var (
+		result sql.Result
+		err    error
+	)
+
 	sqlInsert := "INSERT INTO transactions (account_id, amount, transaction_type, transaction_date) values (?, ?, ?, ?)"
 
-	result, err := t.client.Exec(sqlInsert, transaction.AccountID, transaction.Amount, transaction.TransactionType,
-		transaction.TransactionDate)
+	if strings.ToLower(transaction.TransactionType) == "withdrawal" {
+		result, err = t.client.Exec(sqlInsert, transaction.AccountID, -transaction.Amount, transaction.TransactionType,
+			transaction.TransactionDate)
+	} else {
+		result, err = t.client.Exec(sqlInsert, transaction.AccountID, transaction.Amount, transaction.TransactionType,
+			transaction.TransactionDate)
+	}
+
 	if err != nil {
 		log.Println("Error saving transaction: " + err.Error())
 		return nil, errs.NewUnexpectedError("Unexpected Database error")
@@ -69,6 +82,17 @@ func (t TransactionRepositoryDB) UpdateBalance(transaction Transaction) (float64
 	}
 
 	return newBalance, nil
+}
+
+func (t TransactionRepositoryDB) Rollback(transaction Transaction) *errs.AppError {
+	sqlDelete := "DELETE FROM transactions WHERE transaction_id = ?"
+	_, err := t.client.Exec(sqlDelete, transaction.TransactionID)
+	if err != nil {
+		log.Println("Error on rollback: " + err.Error())
+		return errs.NewUnexpectedError("Unexpected Database error")
+	}
+
+	return nil
 }
 
 func NewTransactionRepositoryDB(dbClient *sqlx.DB) TransactionRepositoryDB {

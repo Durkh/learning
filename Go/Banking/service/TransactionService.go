@@ -46,6 +46,10 @@ func (t DefaultTransactionService) NewTransaction(request dto.NewTransactionRequ
 
 	balance, err = t.repo.UpdateBalance(transaction)
 	if err != nil {
+		err2 := t.repo.Rollback(*newTransaction)
+		if err2 != nil {
+			return nil, err
+		}
 		return nil, err
 	}
 

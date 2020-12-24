@@ -21,4 +21,5 @@ type TransactionRepository interface {
 	Record(Transaction) (*Transaction, *errs.AppError)
 	GetBalance(string) (float64, *errs.AppError)
 	UpdateBalance(Transaction) (float64, *errs.AppError)
+	Rollback(transaction Transaction) *errs.AppError
 }
