@@ -23,17 +23,24 @@ func Start() {
 	customerRepo := Domain.NewCustomerRepositoryDB(dbClient)
 	ch := CustomerHandler{service.NewCustomerService(customerRepo)}
 
-	router.HandleFunc("/customers", ch.getCustomers).Methods(http.MethodGet)
-	router.HandleFunc("/customers/{customer_id:[0-9]+}", ch.getCustomerByID).Methods(http.MethodGet)
+	router.HandleFunc("/customers", ch.getCustomers).
+		Methods(http.MethodGet).Name("GetAllCustomers")
+	router.HandleFunc("/customers/{customer_id:[0-9]+}", ch.getCustomerByID).
+		Methods(http.MethodGet).Name("GetCustomer")
 
 	accountRepo := Domain.NewAccountRepositoryDB(dbClient)
 	ah := AccountHandler{service.NewAccountService(accountRepo)}
 
-	router.HandleFunc("/customers/{customer_id:[0-9]+}/account", ah.NewAccount).Methods(http.MethodPost)
+	router.HandleFunc("/customers/{customer_id:[0-9]+}/account", ah.NewAccount).
+		Methods(http.MethodPost).Name("NewAccount")
 
 	transactionRepo := Domain.NewTransactionRepositoryDB(dbClient)
 	th := TransactionHandler{service.NewTransactionService(transactionRepo)}
-	router.HandleFunc("/customers/{account_id:[0-9]+}/transaction", th.Transaction).Methods(http.MethodPost)
+	router.HandleFunc("/customers/{account_id:[0-9]+}/transaction", th.Transaction).
+		Methods(http.MethodPost).Name("NewTransaction")
+
+	am := AuthMiddleware{Domain.NewAuthRepository()}
+	router.Use(am.authorizationHandler())
 
 	address := os.Getenv("SERVER_ADDR")
 	port := os.Getenv("SERVER_PORT")
